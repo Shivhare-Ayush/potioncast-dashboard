@@ -20,9 +20,28 @@ const MIME_TYPES = {
   '.woff2': 'font/woff2',
 };
 
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
   const parsed = url.parse(req.url);
   let pathname = parsed.pathname;
+
+  // Local route for /api/metrics
+  if (pathname === '/api/metrics') {
+    try {
+      const metricsFn = require('./netlify/functions/metrics.js');
+      const response = await metricsFn.handler({ httpMethod: req.method }, {});
+      res.statusCode = response.statusCode || 200;
+      for (const [k, v] of Object.entries(response.headers || {})) {
+        res.setHeader(k, v);
+      }
+      res.end(response.body);
+      return;
+    } catch (e) {
+      console.error('Local /api/metrics error:', e);
+      res.statusCode = 500;
+      res.end(JSON.stringify({ error: e.message }));
+      return;
+    }
+  }
 
   if (pathname === '/') pathname = '/index.html';
 

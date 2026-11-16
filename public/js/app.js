@@ -441,6 +441,25 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Initial render
+  // Fetch live metrics from Netlify Function
+  async function fetchLiveMetrics() {
+    try {
+      const res = await fetch('/api/metrics');
+      if (res.ok) {
+        const live = await res.json();
+        if (live && live.growth) {
+          state.data = Object.assign({}, state.data, live);
+          window.DASHBOARD_DATA = state.data;
+          updateView();
+          console.log('[Live Metrics] Synchronized with production data connectors:', live.sourcesStatus);
+        }
+      }
+    } catch (e) {
+      console.warn('[Live Metrics] Fetch failed, using baseline data:', e);
+    }
+  }
+
+  // Initial render & live sync
   updateView();
+  fetchLiveMetrics();
 });
