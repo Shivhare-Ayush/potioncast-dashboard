@@ -24,19 +24,29 @@ const server = http.createServer(async (req, res) => {
   const parsed = url.parse(req.url);
   let pathname = parsed.pathname;
 
-  // Local route for /api/metrics
-  if (pathname === '/api/metrics') {
+  // Local route for /api/metrics & /api/auth-otp
+  if (pathname.startsWith('/api/')) {
+    const fnName = pathname.replace('/api/', '');
     try {
-      const metricsFn = require('./netlify/functions/metrics.js');
-      const response = await metricsFn.handler({ httpMethod: req.method }, {});
-      res.statusCode = response.statusCode || 200;
-      for (const [k, v] of Object.entries(response.headers || {})) {
-        res.setHeader(k, v);
-      }
-      res.end(response.body);
+      const fn = require(`./netlify/functions/${fnName}.js`);
+      let body = '';
+      req.on('data', chunk => { body += chunk; });
+      req.on('end', async () => {
+        try {
+          const response = await fn.handler({ httpMethod: req.method, body }, {});
+          res.statusCode = response.statusCode || 200;
+          for (const [k, v] of Object.entries(response.headers || {})) {
+            res.setHeader(k, v);
+          }
+          res.end(response.body);
+        } catch (err) {
+          res.statusCode = 500;
+          res.end(JSON.stringify({ error: err.message }));
+        }
+      });
       return;
     } catch (e) {
-      console.error('Local /api/metrics error:', e);
+      console.error(`Local ${pathname} error:`, e);
       res.statusCode = 500;
       res.end(JSON.stringify({ error: e.message }));
       return;
