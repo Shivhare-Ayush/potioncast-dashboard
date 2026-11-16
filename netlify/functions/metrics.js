@@ -157,8 +157,8 @@ exports.handler = async (event, context) => {
   }
 
   // 2. Live Beehiiv Connector
-  const beehiivKey = process.env.BEEHIIV_API_KEY;
-  const beehiivPub = process.env.BEEHIIV_PUBLICATION_ID || 'pub_c948f85e-10b7-43ae-8908-9c1cf22a877b';
+  const beehiivKey = process.env.BEEHIIV_API_KEY || process.env.BEEHIIV_TOKEN;
+  const beehiivPub = process.env.BEEHIIV_PUBLICATION_ID || process.env.BEEHIIV_PUB_ID || 'pub_c948f85e-10b7-43ae-8908-9c1cf22a877b';
   if (beehiivKey && beehiivPub) {
     try {
       const bhRes = await fetch(`https://api.beehiiv.com/v2/publications/${beehiivPub}/subscriptions?limit=1`, {
@@ -175,7 +175,7 @@ exports.handler = async (event, context) => {
   }
 
   // 3. Live Mercury Connector
-  const mercuryToken = process.env.MERCURY_API_TOKEN;
+  const mercuryToken = process.env.MERCURY_API_TOKEN || process.env.MERCURY_API_KEY;
   if (mercuryToken) {
     try {
       const mercRes = await fetch('https://api.mercury.com/api/v1/accounts', {
@@ -198,7 +198,7 @@ exports.handler = async (event, context) => {
   }
 
   // 4. Live Stripe Connector
-  const stripeKey = process.env.STRIPE_SECRET_KEY;
+  const stripeKey = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_RESTRICTED_KEY || process.env.STRIPE_API_KEY;
   if (stripeKey) {
     try {
       const stripeRes = await fetch('https://api.stripe.com/v1/balance', {
