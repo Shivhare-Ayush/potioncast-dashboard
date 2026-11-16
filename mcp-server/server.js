@@ -92,6 +92,28 @@ const METRICS_STATE = {
   }
 };
 
+// Dynamic Live Telemetry Cache with Baseline Fallback
+let cachedLive = null;
+let lastFetch = 0;
+
+async function getLiveMetrics() {
+  const now = Date.now();
+  if (cachedLive && (now - lastFetch < 60000)) {
+    return cachedLive;
+  }
+  try {
+    const res = await fetch('https://dashboard.potioncast.com/api/metrics');
+    if (res.ok) {
+      cachedLive = await res.json();
+      lastFetch = now;
+      return cachedLive;
+    }
+  } catch (e) {
+    console.warn('Live metrics fetch failed, using local baseline:', e.message);
+  }
+  return null;
+}
+
 // Initialize MCP Server
 const server = new McpServer({
   name: "potioncast-operator-mcp",
@@ -104,10 +126,12 @@ server.tool(
   "Fetch Mercury bank balances, monthly burn rate, runway, Stripe revenue, and MRR.",
   {},
   async () => {
+    const live = await getLiveMetrics();
+    const money = live?.money || METRICS_STATE.money;
     return {
       content: [{
         type: "text",
-        text: JSON.stringify(METRICS_STATE.money, null, 2)
+        text: JSON.stringify(money, null, 2)
       }]
     };
   }
@@ -119,10 +143,12 @@ server.tool(
   "Fetch website visitors, signups, conversion rate (PostHog/Supabase), email subscribers, and ticket sales.",
   {},
   async () => {
+    const live = await getLiveMetrics();
+    const growth = live?.growth || METRICS_STATE.growth;
     return {
       content: [{
         type: "text",
-        text: JSON.stringify(METRICS_STATE.growth, null, 2)
+        text: JSON.stringify(growth, null, 2)
       }]
     };
   }
@@ -134,12 +160,14 @@ server.tool(
   "Fetch omnichannel flywheel cross-pollination metrics and 30-day cohort retention comparison.",
   {},
   async () => {
+    const live = await getLiveMetrics();
+    const marketing = live?.marketing || METRICS_STATE.marketing;
     return {
       content: [{
         type: "text",
         text: JSON.stringify({
-          flywheel: METRICS_STATE.marketing.flywheel,
-          cohorts: METRICS_STATE.marketing.cohorts
+          flywheel: marketing.flywheel,
+          cohorts: marketing.cohorts
         }, null, 2)
       }]
     };
@@ -152,10 +180,12 @@ server.tool(
   "Fetch GrokBot event pipeline, outreach deadlines, and confirmed pop-up schedules.",
   {},
   async () => {
+    const live = await getLiveMetrics();
+    const calendar = live?.calendar || METRICS_STATE.calendar;
     return {
       content: [{
         type: "text",
-        text: JSON.stringify(METRICS_STATE.calendar, null, 2)
+        text: JSON.stringify(calendar, null, 2)
       }]
     };
   }
@@ -167,10 +197,12 @@ server.tool(
   "Fetch channel acquisition breakdown, marketing spend, tickets sold, and CAC per ticket.",
   {},
   async () => {
+    const live = await getLiveMetrics();
+    const attribution = live?.marketing?.attribution || METRICS_STATE.marketing.attribution;
     return {
       content: [{
         type: "text",
-        text: JSON.stringify(METRICS_STATE.marketing.attribution, null, 2)
+        text: JSON.stringify(attribution, null, 2)
       }]
     };
   }
