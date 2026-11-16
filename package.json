@@ -1,0 +1,19 @@
+{
+  "name": "potioncast-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Potioncast Operator Dashboard â€” Internal KPI, Event Calendar & Marketing Flywheel",
+  "scripts": {
+    "dev": "node dev-server.js",
+    "start": "node dev-server.js",
+    "test:runtime": "node scripts/runtime-smoke.mjs",
+    "test:mcp": "node mcp-server/test-mcp.js",
+    "test": "npm run test:runtime && npm run test:mcp"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.48.0"
+  }
+}

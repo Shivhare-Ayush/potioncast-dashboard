@@ -1,0 +1,15 @@
+{
+  "name": "potioncast-operator-mcp",
+  "version": "1.0.0",
+  "description": "Potioncast Operator Dashboard MCP Server — Company Telemetry & Metrics API for AI Agents",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test-mcp.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.1",
+    "express": "^4.21.1"
+  }
+}
