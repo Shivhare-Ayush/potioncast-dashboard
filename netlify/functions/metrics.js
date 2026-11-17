@@ -36,10 +36,10 @@ exports.handler = async (event, context) => {
       mrr: { value: "$0", source: "Stripe | Now" }
     },
     growth: {
-      visitors: { value: "2,140", source: "PostHog" },
-      signups: { value: "168", source: "Supabase" },
-      subscribers: { value: "1,208", source: "Beehiiv | Now" },
-      ticketsSold: { value: "64", source: "Stripe" },
+      visitors: { value: "211", source: "PostHog | 30d" },
+      signups: { value: "12", source: "Supabase" },
+      subscribers: { value: "1", source: "Stripe | Active" },
+      ticketsSold: { value: "4", source: "Magic Eye · Austin" },
       discordMembers: { value: "21", source: "Discord" }
     },
     social: [
@@ -51,7 +51,7 @@ exports.handler = async (event, context) => {
       { channel: "YouTube", followers: "260", change: "+4" }
     ],
     popups: [
-      { name: "Magic Eye | Austin · Oct 31", tickets: 14, revenue: "$350", costs: "$180", profit: "$170", margin: "+49%" }
+      { name: "Magic Eye | Austin · Oct 31", tickets: 4, revenue: "$80", costs: "$35", profit: "$45", margin: "+56%" }
     ],
     calendar: {
       inProgress: 7,
