@@ -51,10 +51,7 @@ exports.handler = async (event, context) => {
       { channel: "YouTube", followers: "260", change: "+4" }
     ],
     popups: [
-      { name: "Magic Eye | San Marcos · Oct 30", tickets: 19, revenue: "$475", costs: "$180", profit: "$295", margin: "+62%" },
-      { name: "Magic Eye | Austin · Oct 18", tickets: 22, revenue: "$550", costs: "$310", profit: "$240", margin: "+44%" },
-      { name: "Magic Eye | San Antonio · Oct 3", tickets: 14, revenue: "$350", costs: "$260", profit: "$90", margin: "+26%" },
-      { name: "Magic Eye | Austin · Sep 20", tickets: 9, revenue: "$225", costs: "$400", profit: "−$175", margin: "-78%" }
+      { name: "Magic Eye | Austin · Oct 31", tickets: 14, revenue: "$350", costs: "$180", profit: "$170", margin: "+49%" }
     ],
     calendar: {
       inProgress: 7,
@@ -201,15 +198,51 @@ exports.handler = async (event, context) => {
   const stripeKey = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_RESTRICTED_KEY || process.env.STRIPE_API_KEY;
   if (stripeKey) {
     try {
+      // 1. Balance verification
       const stripeRes = await fetch('https://api.stripe.com/v1/balance', {
         headers: { 'Authorization': `Bearer ${stripeKey}` }
       });
       const stripeData = await stripeRes.json();
       if (stripeData && Array.isArray(stripeData.available)) {
-        const availableUsd = stripeData.available.find(b => b.currency === 'usd');
-        if (availableUsd && availableUsd.amount !== undefined) {
-          result.sourcesStatus.stripe = 'live';
+        result.sourcesStatus.stripe = 'live';
+      }
+
+      // 2. Query succeeded charges for real net revenue
+      const chargesRes = await fetch('https://api.stripe.com/v1/charges?limit=100', {
+        headers: { 'Authorization': `Bearer ${stripeKey}` }
+      });
+      const chargesData = await chargesRes.json();
+      if (chargesData && Array.isArray(chargesData.data)) {
+        let totalNetCents = 0;
+        let ticketsCount = 0;
+        chargesData.data.forEach(c => {
+          if (c.status === 'succeeded' && !c.refunded) {
+            totalNetCents += (c.amount - (c.amount_refunded || 0));
+            ticketsCount++;
+          }
+        });
+        if (totalNetCents > 0) {
+          result.money.revenue.value = `$${Math.round(totalNetCents / 100).toLocaleString()}`;
+          result.growth.ticketsSold.value = ticketsCount.toString();
         }
+      }
+
+      // 3. Query active subscriptions for real MRR
+      const subsRes = await fetch('https://api.stripe.com/v1/subscriptions?status=active&limit=100', {
+        headers: { 'Authorization': `Bearer ${stripeKey}` }
+      });
+      const subsData = await subsRes.json();
+      if (subsData && Array.isArray(subsData.data)) {
+        let mrrCents = 0;
+        subsData.data.forEach(s => {
+          s.items?.data?.forEach(item => {
+            const unitAmount = item.price?.unit_amount || 0;
+            const interval = item.price?.recurring?.interval;
+            if (interval === 'month') mrrCents += unitAmount * (item.quantity || 1);
+            else if (interval === 'year') mrrCents += Math.round((unitAmount * (item.quantity || 1)) / 12);
+          });
+        });
+        result.money.mrr.value = `$${Math.round(mrrCents / 100).toLocaleString()}`;
       }
     } catch (e) {
       console.warn('Stripe live query failed, keeping baseline:', e.message);

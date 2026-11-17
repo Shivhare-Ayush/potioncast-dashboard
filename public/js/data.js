@@ -32,10 +32,7 @@ window.DASHBOARD_DATA = {
   ],
 
   popups: [
-    { name: "Magic Eye | San Marcos Â· Oct 30", tickets: 19, revenue: "$475", costs: "$180", profit: "$295", margin: "+62%" },
-    { name: "Magic Eye | Austin Â· Oct 18", tickets: 22, revenue: "$550", costs: "$310", profit: "$240", margin: "+44%" },
-    { name: "Magic Eye | San Antonio Â· Oct 3", tickets: 14, revenue: "$350", costs: "$260", profit: "$90", margin: "+26%" },
-    { name: "Magic Eye | Austin Â· Sep 20", tickets: 9, revenue: "$225", costs: "$400", profit: "âˆ’$175", margin: "-78%" }
+    { name: "Magic Eye | Austin · Oct 31", tickets: 14, revenue: "$350", costs: "$180", profit: "$170", margin: "+49%" }
   ],
 
   // Tab 2: Event Calendar (GrokBot Location Pipeline)
