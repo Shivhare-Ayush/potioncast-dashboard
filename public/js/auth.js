@@ -1,5 +1,6 @@
 // public/js/auth.js — Operator Authentication & Access Control
 // Strictly restricts access to Hunter & Ayush (hunter@potioncast.com, ayush@potioncast.com)
+// Uses genuine Supabase email OTP auth matching potioncast-web.
 
 const ADMIN_ALLOWLIST = [
   'hunter@potioncast.com',
@@ -9,20 +10,33 @@ const ADMIN_ALLOWLIST = [
 ];
 
 window.OperatorAuth = {
-  // Check if we are in mock or dev bypass mode
   isBypassMode() {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.has('mock') || urlParams.has('dev');
   },
 
-  getCurrentUser() {
+  async getCurrentUser() {
     if (this.isBypassMode()) {
       return {
         email: 'hunter@potioncast.com',
-        name: 'Hunter Dyess (Bypass Mode)',
-        avatar: 'https://avatar.vercel.sh/hunter'
+        name: 'Hunter Dyess (Bypass Mode)'
       };
     }
+    // Check Supabase session
+    if (window.supabase && window.supabase.auth) {
+      try {
+        const { data: { session } } = await window.supabase.auth.getSession();
+        if (session && session.user && ADMIN_ALLOWLIST.includes(session.user.email?.toLowerCase())) {
+          return {
+            email: session.user.email,
+            name: session.user.user_metadata?.display_name || session.user.email.split('@')[0]
+          };
+        }
+      } catch (e) {
+        console.error('Error fetching Supabase session:', e);
+      }
+    }
+    // Check cached localStorage session fallback
     const sessionStr = localStorage.getItem('potioncast_admin_session');
     if (sessionStr) {
       try {
@@ -37,10 +51,6 @@ window.OperatorAuth = {
     return null;
   },
 
-  isAuthenticated() {
-    return !!this.getCurrentUser();
-  },
-
   async requestOtp(email) {
     const cleanEmail = (email || '').trim().toLowerCase();
     if (!cleanEmail) {
@@ -52,44 +62,39 @@ window.OperatorAuth = {
       return;
     }
 
-    this.showStatus('Requesting operator code...', 'info');
+    this.showStatus('Sending verification code to your email...', 'info');
     const btn = document.getElementById('btn-send-code');
     if (btn) btn.disabled = true;
 
     try {
-      const res = await fetch('/api/auth-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'send', email: cleanEmail })
+      if (!window.supabase || !window.supabase.auth) {
+        throw new Error('Supabase client not initialized');
+      }
+
+      const { data, error } = await window.supabase.auth.signInWithOtp({
+        email: cleanEmail
       });
-      const data = await res.json();
-      if (!res.ok) {
-        this.showStatus(data.error || 'Failed to request code', 'error');
+
+      if (error) {
+        this.showStatus('Could not send code: ' + error.message, 'error');
         if (btn) btn.disabled = false;
         return;
       }
 
-      // Step to OTP verification
+      // Step to OTP verification — Code is in user's email inbox ONLY!
       window._pendingAuthEmail = cleanEmail;
       document.getElementById('auth-step-email').style.display = 'none';
       document.getElementById('auth-step-otp').style.display = 'block';
       document.getElementById('auth-target-email').textContent = cleanEmail;
+      this.showStatus('Check your inbox! We sent a 6-digit verification code to <strong>' + cleanEmail + '</strong>.', 'success');
 
-      if (data.code) {
-        // Auto-fill or show emergency operator code badge
-        const otpInput = document.getElementById('operator-otp');
-        if (otpInput) {
-          otpInput.value = data.code;
-          otpInput.focus();
-        }
-        this.showStatus(`Operator code: <strong>${data.code}</strong>`, 'success');
-      } else {
-        this.showStatus('Verification code sent to your email inbox.', 'success');
-        const otpInput = document.getElementById('operator-otp');
-        if (otpInput) otpInput.focus();
+      const otpInput = document.getElementById('operator-otp');
+      if (otpInput) {
+        otpInput.value = '';
+        otpInput.focus();
       }
     } catch (err) {
-      this.showStatus('Network error requesting code: ' + err.message, 'error');
+      this.showStatus('Failed to send code: ' + err.message, 'error');
       if (btn) btn.disabled = false;
     }
   },
@@ -98,39 +103,51 @@ window.OperatorAuth = {
     const email = window._pendingAuthEmail;
     const cleanCode = (code || '').trim();
     if (!email || !cleanCode) {
-      this.showStatus('Please enter the 6-digit code.', 'error');
+      this.showStatus('Please enter the 6-digit code from your email.', 'error');
       return;
     }
 
-    this.showStatus('Verifying operator credentials...', 'info');
+    this.showStatus('Verifying operator code...', 'info');
     const btn = document.getElementById('btn-verify-code');
     if (btn) btn.disabled = true;
 
     try {
-      const res = await fetch('/api/auth-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'verify', email, code: cleanCode })
+      if (!window.supabase || !window.supabase.auth) {
+        throw new Error('Supabase client not initialized');
+      }
+
+      const { data, error } = await window.supabase.auth.verifyOtp({
+        email: email,
+        token: cleanCode,
+        type: 'email'
       });
-      const data = await res.json();
-      if (!res.ok) {
-        this.showStatus(data.error || 'Invalid or expired code', 'error');
+
+      if (error) {
+        this.showStatus('Verification failed: ' + error.message, 'error');
         if (btn) btn.disabled = false;
         return;
       }
 
-      const user = {
-        email: data.user.email,
-        name: data.user.name,
+      const user = data && data.user;
+      if (!user || !ADMIN_ALLOWLIST.includes(user.email?.toLowerCase())) {
+        this.showStatus('Access Denied: Operator account not permitted.', 'error');
+        if (btn) btn.disabled = false;
+        return;
+      }
+
+      const sessionObj = {
+        email: user.email,
+        name: user.user_metadata?.display_name || user.email.split('@')[0],
         token: data.session?.access_token
       };
-      localStorage.setItem('potioncast_admin_session', JSON.stringify(user));
+      localStorage.setItem('potioncast_admin_session', JSON.stringify(sessionObj));
       this.showStatus('Access granted. Entering dashboard...', 'success');
+
       setTimeout(() => {
         window.location.reload();
       }, 250);
     } catch (err) {
-      this.showStatus('Verification failed: ' + err.message, 'error');
+      this.showStatus('Verification error: ' + err.message, 'error');
       if (btn) btn.disabled = false;
     }
   },
@@ -156,21 +173,27 @@ window.OperatorAuth = {
     statusEl.className = 'auth-status ' + (type === 'error' ? 'auth-error' : type === 'success' ? 'auth-success' : 'auth-info');
   },
 
-  signOut() {
+  async signOut() {
     localStorage.removeItem('potioncast_admin_session');
+    if (window.supabase && window.supabase.auth) {
+      try {
+        await window.supabase.auth.signOut();
+      } catch (e) {}
+    }
     window.location.reload();
   },
 
-  init() {
+  async init() {
     const lockScreen = document.getElementById('lock-screen');
     const appContainer = document.getElementById('app-container');
     const userEmailSpan = document.getElementById('user-email');
 
-    if (this.isAuthenticated()) {
+    const user = await this.getCurrentUser();
+
+    if (user) {
       if (lockScreen) lockScreen.style.display = 'none';
       if (appContainer) appContainer.style.display = 'block';
-      const user = this.getCurrentUser();
-      if (userEmailSpan && user) {
+      if (userEmailSpan) {
         userEmailSpan.innerHTML = `
           <span>${user.email}</span>
           <button class="btn-signout" onclick="window.OperatorAuth.signOut()" title="Sign out of operator dashboard">Sign out</button>
