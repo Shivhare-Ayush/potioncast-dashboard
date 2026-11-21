@@ -363,7 +363,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
 
-        <div class="table-card">
+          <div class="table-card">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
             <div>
               <div class="table-title">Unfulfilled Reading Pipeline</div>
@@ -373,63 +373,65 @@ document.addEventListener('DOMContentLoaded', () => {
               ${(leadsTotals.statusCounts && leadsTotals.statusCounts.uncontacted) !== undefined ? leadsTotals.statusCounts.uncontacted : 46} Uncontacted · ${(leadsTotals.statusCounts && leadsTotals.statusCounts.dm_sent) || 0} DMs Sent
             </div>
           </div>
-          <table>
-            <thead>
-              <tr>
-                <th>Donor</th>
-                <th>Total Diamonds</th>
-                <th>Tier</th>
-                <th>Gifts Sent</th>
-                <th>Status</th>
-                <th>Next Step</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${leadsList.length === 0 ? `
+          <div style="max-height: 510px; overflow-y: auto; border: 1px solid var(--border-light); border-radius: 8px;">
+            <table>
+              <thead>
                 <tr>
-                  <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">Loading leads from Supabase...</td>
+                  <th style="position: sticky; top: 0; background: var(--bg-card); z-index: 2;">Donor</th>
+                  <th style="position: sticky; top: 0; background: var(--bg-card); z-index: 2;">Total Diamonds</th>
+                  <th style="position: sticky; top: 0; background: var(--bg-card); z-index: 2;">Tier</th>
+                  <th style="position: sticky; top: 0; background: var(--bg-card); z-index: 2;">Gifts Sent</th>
+                  <th style="position: sticky; top: 0; background: var(--bg-card); z-index: 2;">Status</th>
+                  <th style="position: sticky; top: 0; background: var(--bg-card); z-index: 2;">Next Step</th>
                 </tr>
-              ` : leadsList.map(l => {
-                const giftsSummary = (l.gifts || []).map(g => `${g.giftName || 'Gift'} x${g.giftCount || 1}`).join(', ') || 'Gift';
-                const status = l.lead_status || 'uncontacted';
-                return `
-                <tr>
-                  <td>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                      <a href="${l.profile_url}" target="_blank" rel="noopener" style="color: var(--text-main); font-weight: 600; text-decoration: none;">
-                        @${l.username}
-                      </a>
-                      ${l.display_name && l.display_name !== l.username ? `<span style="font-size: 11px; color: var(--text-sub);">(${l.display_name})</span>` : ''}
-                    </div>
-                  </td>
-                  <td>
-                    <span style="font-weight: 600; color: #B7950B;">${l.total_diamonds} 💎</span>
-                  </td>
-                  <td>
-                    <span style="font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 9999px; background: #FAF9F5; border: 1px solid var(--border-card);">
-                      ${l.tier}
-                    </span>
-                  </td>
-                  <td style="font-size: 12px; color: var(--text-muted); max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${giftsSummary}">
-                    ${giftsSummary}
-                  </td>
-                  <td>
-                    <select onchange="window.updateLeadStatus('${l.username}', this.value)" style="border: 1px solid var(--border-card); background: #FAF8F5; padding: 4px 8px; border-radius: 6px; font-size: 12px; color: var(--text-main); cursor: pointer;">
-                      <option value="uncontacted" ${status === 'uncontacted' ? 'selected' : ''}>⬜ Uncontacted</option>
-                      <option value="dm_sent" ${status === 'dm_sent' ? 'selected' : ''}>🟡 DM Sent</option>
-                      <option value="replied" ${status === 'replied' ? 'selected' : ''}>🔮 Replied</option>
-                      <option value="reading_given" ${status === 'reading_given' ? 'selected' : ''}>📜 Reading Given</option>
-                      <option value="converted" ${status === 'converted' ? 'selected' : ''}>🎉 Converted</option>
-                    </select>
-                  </td>
-                  <td style="font-size: 12px; color: var(--text-muted);">
-                    ${l.next_step || (status === 'uncontacted' ? 'Send DM' : 'Follow up')}
-                  </td>
-                </tr>
-                `;
-              }).join('')}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                ${leadsList.length === 0 ? `
+                  <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">Loading leads from Supabase...</td>
+                  </tr>
+                ` : leadsList.map(l => {
+                  const giftsSummary = (l.gifts || []).map(g => `${g.giftName || 'Gift'} x${g.giftCount || 1}`).join(', ') || 'Gift';
+                  const status = l.lead_status || 'uncontacted';
+                  return `
+                  <tr>
+                    <td>
+                      <div style="display: flex; flex-direction: column; gap: 2px;">
+                        <a href="${l.profile_url}" target="_blank" rel="noopener" style="color: var(--text-main); font-weight: 600; text-decoration: none; font-size: 13px;">
+                          @${l.username}
+                        </a>
+                        ${l.display_name && l.display_name.toLowerCase() !== l.username.toLowerCase() ? `<span style="font-size: 11px; color: var(--text-sub); line-height: 1.2;">${l.display_name}</span>` : ''}
+                      </div>
+                    </td>
+                    <td>
+                      <span style="font-weight: 600; color: #B7950B;">${l.total_diamonds} 💎</span>
+                    </td>
+                    <td>
+                      <span style="font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 9999px; background: #FAF9F5; border: 1px solid var(--border-card);">
+                        ${l.tier}
+                      </span>
+                    </td>
+                    <td style="font-size: 12px; color: var(--text-muted); max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${giftsSummary}">
+                      ${giftsSummary}
+                    </td>
+                    <td>
+                      <select onchange="window.updateLeadStatus('${l.username}', this.value)" style="border: 1px solid var(--border-card); background: #FAF8F5; padding: 4px 8px; border-radius: 6px; font-size: 12px; color: var(--text-main); cursor: pointer;">
+                        <option value="uncontacted" ${status === 'uncontacted' ? 'selected' : ''}>⬜ Uncontacted</option>
+                        <option value="dm_sent" ${status === 'dm_sent' ? 'selected' : ''}>🟡 DM Sent</option>
+                        <option value="replied" ${status === 'replied' ? 'selected' : ''}>🔮 Replied</option>
+                        <option value="reading_given" ${status === 'reading_given' ? 'selected' : ''}>📜 Reading Given</option>
+                        <option value="converted" ${status === 'converted' ? 'selected' : ''}>🎉 Converted</option>
+                      </select>
+                    </td>
+                    <td style="font-size: 12px; color: var(--text-muted);">
+                      ${l.next_step || (status === 'uncontacted' ? 'Send DM' : 'Follow up')}
+                    </td>
+                  </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
 
