@@ -4,6 +4,26 @@ const fs = require('fs');
 const path = require('path');
 const url = require('url');
 
+// Load .env.local if present
+const envLocal = path.join(__dirname, '.env.local');
+if (fs.existsSync(envLocal)) {
+  const content = fs.readFileSync(envLocal, 'utf8');
+  content.split('\n').forEach(line => {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith('#')) {
+      const idx = trimmed.indexOf('=');
+      if (idx !== -1) {
+        const key = trimmed.slice(0, idx).trim();
+        const val = trimmed.slice(idx + 1).trim();
+        if (!process.env[key]) process.env[key] = val;
+      }
+    }
+  });
+}
+if (!process.env.SUPABASE_SERVICE_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  process.env.SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+}
+
 const PORT = process.env.PORT || 8790;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
@@ -28,7 +48,9 @@ const server = http.createServer(async (req, res) => {
   if (pathname.startsWith('/api/')) {
     const fnName = pathname.replace('/api/', '');
     try {
-      const fn = require(`./netlify/functions/${fnName}.js`);
+      const fnPath = path.resolve(__dirname, 'netlify', 'functions', `${fnName}.js`);
+      delete require.cache[fnPath];
+      const fn = require(fnPath);
       let body = '';
       req.on('data', chunk => { body += chunk; });
       req.on('end', async () => {

@@ -16,10 +16,10 @@ window.DASHBOARD_DATA = {
 
   growth: {
     visitors: { value: "211", source: "PostHog | 30d" },
-    signups: { value: "12", source: "Supabase" },
-    subscribers: { value: "1", source: "Stripe | Active" },
+    signups: { value: "2", source: "Supabase" },
+    subscribers: { value: "374", source: "Beehiiv | Active" },
     ticketsSold: { value: "4", source: "Magic Eye · Austin" },
-    discordMembers: { value: "21", source: "Discord" }
+    discordMembers: { value: "—", source: "Not Connected" }
   },
 
   social: [

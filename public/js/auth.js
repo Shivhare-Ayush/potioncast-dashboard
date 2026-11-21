@@ -6,6 +6,7 @@ const ADMIN_ALLOWLIST = [
   'hunter@potioncast.com',
   'ayush@potioncast.com',
   'huntermdyess@gmail.com',
+  'veks9389@gmail.com',
   'veks9@users.noreply.github.com'
 ];
 

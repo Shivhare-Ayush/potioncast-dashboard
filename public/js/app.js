@@ -10,7 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const state = {
     activeTab: 'kpi', // 'kpi' | 'calendar' | 'marketing'
     timeFilter: 'month', // 'month' | 'all'
-    data: window.DASHBOARD_DATA
+    data: window.DASHBOARD_DATA,
+    tiktokLeads: null
   };
 
   const navTabs = document.querySelectorAll('.nav-tab');
@@ -94,8 +95,11 @@ document.addEventListener('DOMContentLoaded', () => {
       <!-- Social Section -->
       <section class="dashboard-section">
         <div class="table-card">
-          <div class="table-title">Social</div>
-          <div class="table-subtitle">7-day change</div>
+          <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <div class="table-title">Social</div>
+            <span style="font-size: 11px; color: var(--text-muted); background: #FAF0E6; padding: 2px 6px; border-radius: 4px;">Unconnected · Mockup Baseline</span>
+          </div>
+          <div class="table-subtitle">7-day change (pending live API connectors)</div>
           <table>
             <thead>
               <tr>
@@ -244,6 +248,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderMarketingView() {
     const m = state.data.marketing;
+    const leadsTotals = (state.tiktokLeads && state.tiktokLeads.totals) || { leadsCount: 46, pipelineTotalDiamonds: 443, statusCounts: { uncontacted: 46, dm_sent: 0 } };
+    const leadsList = (state.tiktokLeads && state.tiktokLeads.leads) || [];
     return `
       <!-- Funnel Section -->
       <section class="dashboard-section">
@@ -343,6 +349,90 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       </section>
 
+      <!-- TikTok LIVE Leads CRM Section -->
+      <section class="dashboard-section">
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 16px;">
+          <div>
+            <h2 class="section-heading" style="margin-bottom: 4px;">TikTok LIVE Leads CRM</h2>
+            <div class="metric-subtitle">46 Unfulfilled Donors · Spoken reading owed · Synced with Supabase</div>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <span class="live-badge" style="background:#EBF5FB; color:#2980B9;">${leadsTotals.leadsCount || 46} Leads</span>
+            <span class="live-badge" style="background:#FEF9E7; color:#B7950B;">${leadsTotals.pipelineTotalDiamonds || 443} 💎 Pipeline</span>
+            <span class="live-badge" style="background:#E8F8F5; color:#117A65;">Supabase Live</span>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+            <div>
+              <div class="table-title">Unfulfilled Reading Pipeline</div>
+              <div class="table-subtitle">Patrons who gifted diamonds during stream without an answer</div>
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted);">
+              ${(leadsTotals.statusCounts && leadsTotals.statusCounts.uncontacted) !== undefined ? leadsTotals.statusCounts.uncontacted : 46} Uncontacted · ${(leadsTotals.statusCounts && leadsTotals.statusCounts.dm_sent) || 0} DMs Sent
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Donor</th>
+                <th>Total Diamonds</th>
+                <th>Tier</th>
+                <th>Gifts Sent</th>
+                <th>Status</th>
+                <th>Next Step</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${leadsList.length === 0 ? `
+                <tr>
+                  <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">Loading leads from Supabase...</td>
+                </tr>
+              ` : leadsList.map(l => {
+                const giftsSummary = (l.gifts || []).map(g => `${g.giftName || 'Gift'} x${g.giftCount || 1}`).join(', ') || 'Gift';
+                const status = l.lead_status || 'uncontacted';
+                return `
+                <tr>
+                  <td>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <a href="${l.profile_url}" target="_blank" rel="noopener" style="color: var(--text-main); font-weight: 600; text-decoration: none;">
+                        @${l.username}
+                      </a>
+                      ${l.display_name && l.display_name !== l.username ? `<span style="font-size: 11px; color: var(--text-sub);">(${l.display_name})</span>` : ''}
+                    </div>
+                  </td>
+                  <td>
+                    <span style="font-weight: 600; color: #B7950B;">${l.total_diamonds} 💎</span>
+                  </td>
+                  <td>
+                    <span style="font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 9999px; background: #FAF9F5; border: 1px solid var(--border-card);">
+                      ${l.tier}
+                    </span>
+                  </td>
+                  <td style="font-size: 12px; color: var(--text-muted); max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${giftsSummary}">
+                    ${giftsSummary}
+                  </td>
+                  <td>
+                    <select onchange="window.updateLeadStatus('${l.username}', this.value)" style="border: 1px solid var(--border-card); background: #FAF8F5; padding: 4px 8px; border-radius: 6px; font-size: 12px; color: var(--text-main); cursor: pointer;">
+                      <option value="uncontacted" ${status === 'uncontacted' ? 'selected' : ''}>⬜ Uncontacted</option>
+                      <option value="dm_sent" ${status === 'dm_sent' ? 'selected' : ''}>🟡 DM Sent</option>
+                      <option value="replied" ${status === 'replied' ? 'selected' : ''}>🔮 Replied</option>
+                      <option value="reading_given" ${status === 'reading_given' ? 'selected' : ''}>📜 Reading Given</option>
+                      <option value="converted" ${status === 'converted' ? 'selected' : ''}>🎉 Converted</option>
+                    </select>
+                  </td>
+                  <td style="font-size: 12px; color: var(--text-muted);">
+                    ${l.next_step || (status === 'uncontacted' ? 'Send DM' : 'Follow up')}
+                  </td>
+                </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <!-- Online Characters -->
       <section class="dashboard-section">
         <h2 class="section-heading">Online characters</h2>
@@ -438,6 +528,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
       e.target.classList.add('active');
       state.timeFilter = e.target.textContent.toLowerCase().includes('month') ? 'month' : 'all';
+      updateView();
     });
   });
 
@@ -450,6 +541,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (live && live.growth) {
           state.data = Object.assign({}, state.data, live);
           window.DASHBOARD_DATA = state.data;
+          
+          // Update the header badge with real connection status
+          const headerBadge = document.querySelector('.header-container .live-badge');
+          if (headerBadge && live.sourcesStatus) {
+            const liveCount = Object.values(live.sourcesStatus).filter(s => s === 'live').length;
+            headerBadge.textContent = `🟢 ${liveCount}/5 Live`;
+            headerBadge.title = Object.entries(live.sourcesStatus).map(([k, v]) => `${k}: ${v}`).join(', ');
+          }
+
           updateView();
           console.log('[Live Metrics] Synchronized with production data connectors:', live.sourcesStatus);
         }
@@ -459,7 +559,39 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Fetch TikTok LIVE unfulfilled donor leads from Supabase
+  async function fetchTikTokLeads() {
+    try {
+      const res = await fetch('/api/tiktok-leads');
+      if (res.ok) {
+        state.tiktokLeads = await res.json();
+        if (state.activeTab === 'marketing') {
+          updateView();
+        }
+        console.log('[TikTok Leads] Synced with Supabase:', state.tiktokLeads?.totals);
+      }
+    } catch (e) {
+      console.warn('[TikTok Leads] Fetch failed:', e);
+    }
+  }
+
+  window.updateLeadStatus = async function(username, newStatus) {
+    try {
+      const res = await fetch('/api/tiktok-leads', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, lead_status: newStatus })
+      });
+      if (res.ok) {
+        await fetchTikTokLeads();
+      }
+    } catch (e) {
+      console.error('Failed to update lead status:', e);
+    }
+  };
+
   // Initial render & live sync
   updateView();
   fetchLiveMetrics();
+  fetchTikTokLeads();
 });

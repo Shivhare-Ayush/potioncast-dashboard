@@ -37,10 +37,10 @@ exports.handler = async (event, context) => {
     },
     growth: {
       visitors: { value: "211", source: "PostHog | 30d" },
-      signups: { value: "12", source: "Supabase" },
+      signups: { value: "2", source: "Supabase" },
       subscribers: { value: "1", source: "Stripe | Active" },
       ticketsSold: { value: "4", source: "Magic Eye · Austin" },
-      discordMembers: { value: "21", source: "Discord" }
+      discordMembers: { value: "—", source: "Not Connected" }
     },
     social: [
       { channel: "TikTok | @trymagiceye", followers: "4,820", change: "+210" },
@@ -121,12 +121,24 @@ exports.handler = async (event, context) => {
     try {
       const sbHeaders = { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Prefer': 'count=exact' };
       
-      // Profiles count
-      const profRes = await fetch(`${supabaseUrl}/rest/v1/profiles?select=*&limit=1`, { headers: sbHeaders });
-      const profCount = profRes.headers.get('content-range')?.split('/')[1];
-      if (profCount && !isNaN(parseInt(profCount))) {
-        result.growth.signups.value = parseInt(profCount).toLocaleString();
-        result.marketing.funnel.signups = result.growth.signups.value;
+      // Profiles count: Filter out internal / team / founder accounts
+      const profRes = await fetch(`${supabaseUrl}/rest/v1/profiles?select=id,email,display_name`, { headers: sbHeaders });
+      const allProfiles = await profRes.json();
+      if (Array.isArray(allProfiles)) {
+        const isInternalEmail = (email) => {
+          const e = (email || '').toLowerCase().trim();
+          if (!e) return false;
+          if (e.endsWith('@potioncast.com')) return true;
+          if (e === 'veks9389@gmail.com') return true;
+          if (e.includes('hunter') || e.includes('ayush') || e.includes('dyess')) return true;
+          return false;
+        };
+
+        const realProfiles = allProfiles.filter(p => !isInternalEmail(p.email));
+        const realCount = realProfiles.length;
+        result.growth.signups.value = realCount.toString();
+        result.growth.signups.source = `Supabase | ${allProfiles.length - realCount} team filtered`;
+        result.marketing.funnel.signups = realCount.toString();
       }
 
       // Cat sessions & unique chatters
@@ -158,12 +170,22 @@ exports.handler = async (event, context) => {
   const beehiivPub = process.env.BEEHIIV_PUBLICATION_ID || process.env.BEEHIIV_PUB_ID || 'pub_c948f85e-10b7-43ae-8908-9c1cf22a877b';
   if (beehiivKey && beehiivPub) {
     try {
-      const bhRes = await fetch(`https://api.beehiiv.com/v2/publications/${beehiivPub}/subscriptions?limit=1`, {
-        headers: { 'Authorization': `Bearer ${beehiivKey}` }
-      });
-      const bhData = await bhRes.json();
-      if (bhData && bhData.total_results !== undefined) {
-        result.growth.subscribers.value = bhData.total_results.toLocaleString();
+      let totalSubs = 0;
+      let cursor = null;
+      for (let i = 0; i < 10; i++) {
+        const url = `https://api.beehiiv.com/v2/publications/${beehiivPub}/subscriptions?limit=100${cursor ? '&cursor=' + cursor : ''}`;
+        const bhRes = await fetch(url, {
+          headers: { 'Authorization': `Bearer ${beehiivKey}` }
+        });
+        const bhData = await bhRes.json();
+        if (!bhData.data || !bhData.data.length) break;
+        totalSubs += bhData.data.length;
+        if (!bhData.has_more || !bhData.next_cursor) break;
+        cursor = bhData.next_cursor;
+      }
+      if (totalSubs > 0) {
+        result.growth.subscribers.value = totalSubs.toLocaleString();
+        result.growth.subscribers.source = 'Beehiiv | Active';
         result.sourcesStatus.beehiiv = 'live';
       }
     } catch (e) {
