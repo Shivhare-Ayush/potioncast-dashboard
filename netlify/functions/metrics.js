@@ -120,20 +120,20 @@ exports.handler = async (event, context) => {
   if (supabaseUrl && supabaseKey) {
     try {
       const sbHeaders = { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Prefer': 'count=exact' };
+
+      const isInternalEmail = (email) => {
+        const e = (email || '').toLowerCase().trim();
+        if (!e) return false;
+        if (e.endsWith('@potioncast.com')) return true;
+        if (e === 'veks9389@gmail.com') return true;
+        if (e.includes('hunter') || e.includes('ayush') || e.includes('dyess')) return true;
+        return false;
+      };
       
       // Profiles count: Filter out internal / team / founder accounts
       const profRes = await fetch(`${supabaseUrl}/rest/v1/profiles?select=id,email,display_name`, { headers: sbHeaders });
       const allProfiles = await profRes.json();
       if (Array.isArray(allProfiles)) {
-        const isInternalEmail = (email) => {
-          const e = (email || '').toLowerCase().trim();
-          if (!e) return false;
-          if (e.endsWith('@potioncast.com')) return true;
-          if (e === 'veks9389@gmail.com') return true;
-          if (e.includes('hunter') || e.includes('ayush') || e.includes('dyess')) return true;
-          return false;
-        };
-
         const realProfiles = allProfiles.filter(p => !isInternalEmail(p.email));
         const realCount = realProfiles.length;
         result.growth.signups.value = realCount.toString();
@@ -141,12 +141,25 @@ exports.handler = async (event, context) => {
         result.marketing.funnel.signups = realCount.toString();
       }
 
-      // Cat sessions & unique chatters
-      const catRes = await fetch(`${supabaseUrl}/rest/v1/cat_sessions?select=user_id`, { headers: sbHeaders });
+      // Cat sessions & unique chatters: filter out team accounts
+      const catRes = await fetch(`${supabaseUrl}/rest/v1/cat_sessions?select=id,user_id,started_at`, { headers: sbHeaders });
       const catSessions = await catRes.json();
-      if (Array.isArray(catSessions) && catSessions.length > 0) {
-        const uniqueChatters = new Set(catSessions.map(s => s.user_id).filter(Boolean));
-        result.marketing.onlineCharacters.peopleChatting = uniqueChatters.size.toString();
+      if (Array.isArray(catSessions) && catSessions.length > 0 && Array.isArray(allProfiles)) {
+        const teamUserIds = new Set(allProfiles.filter(p => isInternalEmail(p.email)).map(p => p.id));
+        const realSessions = catSessions.filter(s => s.user_id && !teamUserIds.has(s.user_id));
+        const realChatters = new Set(realSessions.map(s => s.user_id));
+        result.marketing.onlineCharacters.peopleChatting = realChatters.size.toString();
+        
+        // Compute genuine repeat chatter retention
+        const sessionCountByUser = {};
+        for (const s of realSessions) {
+          sessionCountByUser[s.user_id] = (sessionCountByUser[s.user_id] || 0) + 1;
+        }
+        const repeatCount = Object.values(sessionCountByUser).filter(count => count > 1).length;
+        if (realChatters.size > 0) {
+          const retentionPct = Math.round((repeatCount / realChatters.size) * 100);
+          result.marketing.onlineCharacters.cameBack = `${retentionPct}% (${repeatCount}/${realChatters.size})`;
+        }
       }
 
       // Tickets sold

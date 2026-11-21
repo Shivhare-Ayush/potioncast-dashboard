@@ -442,12 +442,12 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="metric-card">
             <div class="metric-label">People chatting</div>
             <div class="metric-value">${m.onlineCharacters.peopleChatting}</div>
-            <div class="metric-subtitle">Supabase</div>
+            <div class="metric-subtitle">Supabase | 11 team filtered</div>
           </div>
           <div class="metric-card">
             <div class="metric-label">Came back</div>
             <div class="metric-value">${m.onlineCharacters.cameBack}</div>
-            <div class="metric-subtitle">Supabase</div>
+            <div class="metric-subtitle">Supabase | Repeat chatters</div>
           </div>
           <div class="metric-card">
             <div class="metric-label">Paying</div>
@@ -460,8 +460,11 @@ document.addEventListener('DOMContentLoaded', () => {
       <!-- Attractions Attribution -->
       <section class="dashboard-section">
         <div class="table-card">
-          <div class="table-title">Where people came from</div>
-          <div class="table-subtitle">PostHog + Stripe</div>
+          <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <div class="table-title">Where people came from</div>
+            <span style="font-size: 11px; color: var(--text-muted); background: #FAF0E6; padding: 2px 6px; border-radius: 4px;">Unconnected · Mockup Baseline</span>
+          </div>
+          <div class="table-subtitle">PostHog + Stripe (pending live attribution pipeline)</div>
           <table>
             <thead>
               <tr>
